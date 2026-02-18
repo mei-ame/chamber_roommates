@@ -22,7 +22,7 @@ Other Notes:
 
 #### ADD A HANDLER IN CASE SOMEONE SUBMITS MULTIPLE TIMES, TAKE THE MOST RECENT RESPONSE, DROP ALL OTHERS 
 
-def clean_ratings(input_csv):       ## add on the number of rooms, adn number of people per room later as a dictionary
+def clean_ratings(input_csv):
     '''
     Parameters:
         input_csv: csv file with the roommate ratings
