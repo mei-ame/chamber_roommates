@@ -10,5 +10,3 @@ Download the results file from the form ***as a csv***, upload it as is to the G
 
 # Ensure you have the packages from the requirements.txt installed:
 pip install -r requirements.txt
-
-pulp, pandas, numpy, tkinter
