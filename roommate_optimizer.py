@@ -152,6 +152,3 @@ def assign_rooms(input_csv, capacities):
                 results.append({"Name": names[i], "Room": r + 1})
 
     return pd.DataFrame(results), None
-
-if __name__ == "__main__":
-    print(assign_rooms('Seattle Roommate Preferences.csv'))
