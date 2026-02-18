@@ -9,4 +9,4 @@ Using HTTPS: `git clone https://github.com/mei-ame/chamber_roommates.git`
 Download the results file from the form ***as a csv***, upload it as is to the GUI.
 
 # Ensure you have the following packages installed:
-pulp, pandas, numpy
+pulp, pandas, numpy, tkinter
