@@ -1,5 +1,4 @@
-import pulp, numpy as np, pandas as pd
-from itertools import combinations
+import pulp, pandas as pd
 
 """
 Constraints
@@ -34,7 +33,6 @@ def clean_ratings(input_csv):       ## add on the number of rooms, adn number of
     df = pd.read_csv(input_csv)
 
     # Get name list from columns, pulling only full names between the [ ]
-    # names = [df.columns[0]] + df.columns[1:].str.extract(r'\[(.*?)\]$')[0].tolist()
     names = df.columns[1:].str.extract(r'\[(.*?)\]$')[0].tolist()
     df.columns = [df.columns[0]] + names
 
@@ -83,13 +81,13 @@ def clean_ratings(input_csv):       ## add on the number of rooms, adn number of
     ordered_df.set_index('Response', inplace=True)
     ordered_df = ordered_df.reindex(index=names, columns=names)
 
-    # ordered_df.to_csv('cleaned_ratings.csv')
     return ordered_df
 
-def assign_rooms(input_csv):
+def assign_rooms(input_csv, capacities):
     '''
     Parameters:
         input_csv: csv file with the roommate ratings
+        capacities: number of people that can sleep in a room
     
     Output:
         room_assignments: dictionary {room #: people in the room}
@@ -100,23 +98,26 @@ def assign_rooms(input_csv):
     N = len(names)
     R = df.values
 
+    if sum(capacities) < N:
+        return None, f"Capacity mismatch: Rooms hold {sum(capacities)}, but there are {N} people."
+
     # Set the problem in pulp
     prob = pulp.LpProblem("RoommateAssignment", pulp.LpMaximize)
 
     # Decision variables
     # x[i][r] = 1 if person i is in room r
-    rooms = [0, 1, 2]
+    rooms = range(len(capacities))
     x = pulp.LpVariable.dicts("x", (range(N), rooms), cat='Binary')
+    y = pulp.LpVariable.dicts("y", (range(N), range(N), rooms), cat='Binary')
 
     # Constraints
     # 1. Each person in one room
     for i in range(N):
         prob += pulp.lpSum([x[i][r] for r in rooms]) == 1
 
-    # 2. Room sizes (5, 4, 4) ### CHANGE TO BE BASED ON THE NUMBER OF ROOMS/SIZES IN THE GUI
-    prob += pulp.lpSum([x[i][0] for i in range(N)]) == 5
-    prob += pulp.lpSum([x[i][1] for i in range(N)]) == 4
-    prob += pulp.lpSum([x[i][2] for i in range(N)]) == 4
+    # 2. Room sizes
+    for r in rooms:
+        prob += pulp.lpSum([x[i][r] for i in range(N)]) == capacities[r]
 
     # 3. No 0 ratings (excluding self-rating)
     for i in range(N):
@@ -127,7 +128,6 @@ def assign_rooms(input_csv):
 
     # 4. Objective: Maximize sum of ratings
     # Need the product x[i][r] * x[j][r] --> linearize
-    y = pulp.LpVariable.dicts("y", (range(N), range(N), rooms), cat='Binary')
     for i in range(N):
         for j in range(N):
             for r in rooms:
@@ -141,36 +141,17 @@ def assign_rooms(input_csv):
     # Solve
     prob.solve()
 
+    if pulp.LpStatus[prob.status] != 'Optimal':
+        return None, "Could not find an optimal solution. Check for conflicting 'Do Not Room' constraints."
+
     # Results
     results = []
     for i in range(N):
         for r in rooms:
             if pulp.value(x[i][r]) == 1:
-                results.append((names[i], r))
+                results.append({"Name": names[i], "Room": r + 1})
 
-    # Grouping
-    room_assignments = {0: [], 1: [], 2: []}
-    for name, r in results:
-        room_assignments[r].append(name)
-
-    # Sum per room, #### CHANGE THIS TO AVERAGE
-    room_sums = {}
-    for r, room_members in room_assignments.items():
-        s = 0
-        indices = [names.index(m) for m in room_members]
-        for i in indices:
-            for j in indices:
-                s += R[i][j]
-        room_sums[r] = s
-
-    print("Room Sums:", room_sums)
-    print("Room Assignments:")
-    return(room_assignments)
-
-    # Final dataframe with assignment
-    assignment_df = pd.DataFrame(results, columns=['Name', 'Room'])
-    assignment_df.to_csv('RoomAssignments.csv', index=False)
-
+    return pd.DataFrame(results), None
 
 if __name__ == "__main__":
     print(assign_rooms('Seattle Roommate Preferences.csv'))
